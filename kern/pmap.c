@@ -276,7 +276,13 @@ mem_init_mp(void)
 	//     Permissions: kernel RW, user NONE
 	//
 	// LAB 4: Your code here:
-
+    int i;
+    uint32_t kstacktop_i;
+    for (i = 0; i < NCPU; i++) {
+        kstacktop_i = KSTACKTOP - i * (KSTKSIZE + KSTKGAP);
+        boot_map_region(kern_pgdir, kstacktop_i - KSTKSIZE, KSTKSIZE,
+                        PADDR(percpu_kstacks[i]), PTE_W | PTE_P);
+    }
 }
 
 // --------------------------------------------------------------
@@ -324,9 +330,12 @@ page_init(void)
 
     // page 0 is in use
     pages[0].pp_ref = 1;
-    
+    pages[MPENTRY_PADDR >> PGSHIFT].pp_ref = 1;
+
     // the rest of base memory is free
     for (i = 1; i < npages_basemem; i++) {
+        if (i == (MPENTRY_PADDR >> PGSHIFT))
+            continue;
         pages[i].pp_ref = 0;
         pages[i].pp_link = page_free_list;
         page_free_list = &pages[i];
