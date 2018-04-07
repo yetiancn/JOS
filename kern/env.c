@@ -200,8 +200,6 @@ env_setup_vm(struct Env *e)
 	// Permissions: kernel R, user R
 	e->env_pgdir[PDX(UVPT)] = PADDR(e->env_pgdir) | PTE_P | PTE_U;
 
-    cprintf("ENV_SETUP_VM SUCCEED\n");
-
 	return 0;
 }
 
@@ -285,7 +283,6 @@ region_alloc(struct Env *e, void *va, size_t len)
 	//   'va' and 'len' values that are not page-aligned.
 	//   You should round va down, and round (va + len) up.
 	//   (Watch out for corner-cases!)
-    cprintf("REGION_ALLOC START\n");
 
     int ret;
     struct PageInfo *pp;
@@ -299,7 +296,6 @@ region_alloc(struct Env *e, void *va, size_t len)
         if (ret)
             panic("region_alloc: %e\n", ret);
     }
-    cprintf("REGION_ALLOC SUCCEED\n");
 }
 
 //
@@ -377,13 +373,12 @@ load_icode(struct Env *e, uint8_t *binary)
         }
     }
 
-
+    lcr3(PADDR(kern_pgdir));
 	// Now map one page for the program's initial stack
 	// at virtual address USTACKTOP - PGSIZE.
 
 	// LAB 3: Your code here.
     region_alloc(e, (void *)(USTACKTOP - PGSIZE), PGSIZE); 
-    cprintf("LOAD_ICODE SUCCEED\n");
 }
 
 //
@@ -396,7 +391,6 @@ load_icode(struct Env *e, uint8_t *binary)
 void
 env_create(uint8_t *binary, enum EnvType type)
 {
-    cprintf("ENV_CREATE START\n");
 
     // LAB 3: Your code here.
     int ret;
@@ -407,7 +401,6 @@ env_create(uint8_t *binary, enum EnvType type)
     load_icode(newenv, binary);
     newenv->env_type = type;
 
-    cprintf("ENV_CREATE SUCCEED\n");
 }
 
 //
@@ -524,7 +517,6 @@ env_run(struct Env *e)
 	//	e->env_tf to sensible values.
 
 	// LAB 3: Your code here.
-    cprintf("ENV_RUN START\n");
 
     if (curenv) {
         // This is a context switch.
@@ -535,16 +527,7 @@ env_run(struct Env *e)
     curenv->env_status = ENV_RUNNING;
     curenv->env_runs += 1;
 
-    cprintf("curenv set\n");
-
     lcr3(PADDR(curenv->env_pgdir));
-
-    cprintf("cr3 set\n");
-
-    cprintf("%x\n", curenv->env_tf.tf_eip);
     env_pop_tf(&curenv->env_tf);
-
-    cprintf("ENV_RUN SUCCEED\n");
-    panic("env_run not yet implemented");
 
 }
