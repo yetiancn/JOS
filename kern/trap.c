@@ -184,7 +184,9 @@ trap_dispatch(struct Trapframe *tf)
 {
 	// Handle processor exceptions.
 	// LAB 3: Your code here.
-    if (tf->tf_trapno == T_BRKPT)
+    if (tf->tf_trapno == T_DEBUG)
+        single_step_handler(tf);
+    else if (tf->tf_trapno == T_BRKPT)
         monitor(tf);
     else if (tf->tf_trapno == T_PGFLT)
         page_fault_handler(tf);
@@ -246,6 +248,12 @@ trap(struct Trapframe *tf)
 	env_run(curenv);
 }
 
+
+void
+single_step_handler(struct Trapframe *tf)
+{
+    monitor(tf);
+}
 
 void
 page_fault_handler(struct Trapframe *tf)

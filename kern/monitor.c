@@ -13,6 +13,7 @@
 #include <kern/trap.h>
 
 #include <kern/pmap.h>
+#include <kern/env.h>
 
 #define CMDBUF_SIZE	80	// enough for one VGA text line
 
@@ -27,13 +28,16 @@ struct Command {
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
-    // 20180113
     { "backtrace", "Display backtrace stack from the current procedure", mon_backtrace },
+    // lab2 challenge!
     { "showmappings", "Display physical page mappings", mon_showmappings },
     { "setperm", "Set permission bit of pte", mon_setperm },
     { "clearperm", "Clear permission bit of pte", mon_setperm },
     { "changeperm", "Change permission bit of pte", mon_setperm },
     { "dump", "Dump virtual/physical memory", mon_dump },
+    // lab3 challenge!
+    { "continue", "Continue executing instructions", mon_continue },
+    { "si", "Single step", mon_si },
 };
 
 /***** Implementations of basic kernel monitor commands *****/
@@ -307,6 +311,21 @@ mon_dump(int argc, char **argv, struct Trapframe *tf)
         dump_phy(start, end);
     else
         dump_vir(start, end);
+    return 0;
+}
+
+int
+mon_continue(int argc, char **argv, struct Trapframe *tf)
+{
+    env_pop_tf(tf);
+    return 0;
+}
+
+int
+mon_si(int argc, char **argv, struct Trapframe *tf)
+{
+    tf->tf_eflags |= 0x100; // set TF
+    env_pop_tf(tf);
     return 0;
 }
 
