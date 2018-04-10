@@ -272,6 +272,7 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 	// LAB 3: Your code here.
 
 	// panic("syscall not implemented");
+    cprintf("syscallno: %u\n", syscallno);
 
 	switch (syscallno) {
     case SYS_cputs:
@@ -283,6 +284,9 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
         return sys_getenvid();
     case SYS_env_destroy:
         return sys_env_destroy(a1); 
+    case SYS_yield:
+        sys_yield();
+        return 0;
     default:
 		return -E_INVAL;
 	}
