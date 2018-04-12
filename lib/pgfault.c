@@ -32,10 +32,10 @@ set_pgfault_handler(void (*handler)(struct UTrapframe *utf))
         r = sys_page_alloc(0, (void *)(UXSTACKTOP - PGSIZE), 
                             PTE_W | PTE_U | PTE_P);
         if (r < 0)
-            panic("set_pgfault_handler: fail to alloc exception stack\n");
+            panic("set_pgfault_handler: %e\n", r);
         r = sys_env_set_pgfault_upcall(0, _pgfault_upcall);
         if (r < 0)
-            panic("set_pgfault_handler: exception stack mapping error\n");
+            panic("set_pgfault_handler: %e\n", r);
 	}
 
 	// Save handler pointer for assembly to call.
