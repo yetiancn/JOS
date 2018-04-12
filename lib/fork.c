@@ -25,8 +25,10 @@ pgfault(struct UTrapframe *utf)
 	//   (see <inc/memlayout.h>).
 
 	// LAB 4: Your code here.
-    if (!((err & FEC_WR) && (uvpt[PGNUM(addr)] & PTE_COW)))
+    if (!((err & FEC_WR) && (uvpt[PGNUM(addr)] & PTE_COW))) {
+        cprintf("err: %u, PTE_COW: %x", err, (uvpt[PGNUM(addr)] & PTE_COW));
         panic("pgfault: not write faulting on a copy-on-write page\n");
+    }
 
 	// Allocate a new page, map it at a temporary location (PFTEMP),
 	// copy the data from the old page to the new page, then move the new
@@ -115,6 +117,7 @@ fork(void)
         panic("fork: %e", envid);
     if (envid == 0) {
         // child
+        thisenv = (const volatile struct Env *) &envs[ENVX(sys_getenvid())];
         return 0;
     }
     
