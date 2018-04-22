@@ -62,8 +62,25 @@ alloc_block(void)
 	// super->s_nblocks blocks in the disk altogether.
 
 	// LAB 5: Your code here.
-	panic("alloc_block not implemented");
-	return -E_NO_DISK;
+    int i, j;
+    uint32_t blockno;
+
+    for (i = 0; i <= super->s_nblocks / 32; i++)
+        if (bitmap[i] != 0) {
+            for (j = 0; j < 32; j++) {
+                if (i * 32 + j >= super->s_nblocks)
+                    break;
+                if (bitmap[i] & (1 << j)) {
+                    blockno = i * 32 + j;
+                    bitmap[i] &= ~(1 << j);
+                    flush_block(&bitmap[i]);
+                    return blockno;
+                }
+            }
+            break;
+        }
+    
+    return -E_NO_DISK;
 }
 
 // Validate the file system bitmap.
@@ -135,7 +152,29 @@ static int
 file_block_walk(struct File *f, uint32_t filebno, uint32_t **ppdiskbno, bool alloc)
 {
        // LAB 5: Your code here.
-       panic("file_block_walk not implemented");
+    if (filebno >= NDIRECT + NINDIRECT)
+        return -E_INVAL;
+
+    if (filebno < NDIRECT) {
+        if (ppdiskbno != NULL)
+            *ppdiskbno = &f->f_direct[filebno];
+        return 0;
+    }
+    
+    // NDIRECT <= filebn < NDIRECT + NINDIRECT
+    uintptr_t *indirect = (uintptr_t *)(DISKMAP + (f->indirect) * BLKSIZE);
+    if (indirect[filebno - NDIRECT] == 0) {
+        if (alloc == 0)
+            return -E_NOT_FOUND;
+        if (filebno - NDIRECT == NINDIRECT)
+            return -E_NO_DISK;
+        indirect[filebno - NDIRECT] = alloc_block();
+    }
+    if (ppdiskbno != NULL)
+        *ppdiskbno = &indirect[filebno - NDIRECT];
+    
+    return 0;
+
 }
 
 // Set *blk to the address in memory where the filebno'th
