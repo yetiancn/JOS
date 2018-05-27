@@ -242,17 +242,17 @@ trap_dispatch(struct Trapframe *tf)
                 utf = (struct UTrapframe *)(UXSTACKTOP - sizeof(struct UTrapframe));
             user_mem_assert(curenv, (const void *)utf, sizeof(struct UTrapframe), PTE_W);
             utf->utf_exception_handler = (uint32_t)curenv->env_exception_handlers[tf->tf_trapno];
-            // utf->utf_fault_va = fault_va;
+            if (tf->tf_trapno == T_PGFLT)
+	            utf->utf_fault_va = rcr2();
+            else
+                utf->utf_fault_va = 0;
             utf->utf_err = tf->tf_err;
             utf->utf_regs = tf->tf_regs;
             utf->utf_eip = tf->tf_eip;
             utf->utf_eflags = tf->tf_eflags;
             utf->utf_esp = tf->tf_esp;
             
-           // void *entry = (void *)utf - 4;
-           // *(void **)entry = curenv->env_exception_handlers[tf->tf_trapno];
-            
-            curenv->env_tf.tf_esp = (uint32_t)utf; //(uint32_t)entry;
+            curenv->env_tf.tf_esp = (uint32_t)utf; 
             curenv->env_tf.tf_eip = (uint32_t)curenv->env_exception_upcall;
             env_run(curenv);
             return;

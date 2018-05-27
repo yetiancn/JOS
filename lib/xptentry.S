@@ -7,8 +7,6 @@
 _exception_upcall:
 	// Call the C page fault handler.
     movl (%esp), %eax
-//    popl %eax
-
 	pushl %esp			// function argument: pointer to UTF
 	call *%eax
 	addl $8, %esp			// pop function argument
