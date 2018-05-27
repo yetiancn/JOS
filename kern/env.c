@@ -248,6 +248,7 @@ env_alloc(struct Env **newenv_store, envid_t parent_id)
 	// from "leaking" into our new environment.
 	memset(&e->env_tf, 0, sizeof(e->env_tf));
 
+
 	// Set up appropriate initial values for the segment registers.
 	// GD_UD is the user data segment selector in the GDT, and
 	// GD_UT is the user text segment selector (see inc/memlayout.h).
@@ -268,7 +269,11 @@ env_alloc(struct Env **newenv_store, envid_t parent_id)
     e->env_tf.tf_eflags |= FL_IF;
 
 	// Clear the page fault handler until user installs one.
-	e->env_pgfault_upcall = 0;
+	// e->env_pgfault_upcall = 0;    
+    // Challenge!
+    e->env_exception_upcall = 0;
+    memset(&e->env_exception_handlers, 0, sizeof(e->env_exception_handlers));
+
 
 	// Also clear the IPC receiving flag.
 	e->env_ipc_recving = 0;

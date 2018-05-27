@@ -76,7 +76,11 @@ struct Trapframe {
 
 struct UTrapframe {
 	/* information about the fault */
-	uint32_t utf_fault_va;	/* va for T_PGFLT, 0 otherwise */
+
+    // Challenge!
+    uint32_t utf_exception_handler;
+    
+    uint32_t utf_fault_va;	/* va for T_PGFLT, 0 otherwise */
 	uint32_t utf_err;
 	/* trap-time return state */
 	struct PushRegs utf_regs;

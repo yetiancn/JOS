@@ -29,6 +29,8 @@ typedef int32_t envid_t;
 #define NENV			(1 << LOG2NENV)
 #define ENVX(envid)		((envid) & (NENV - 1))
 
+#define NEXCEPTIONS     64
+
 // Values of env_status in struct Env
 enum {
 	ENV_FREE = 0,
@@ -57,7 +59,9 @@ struct Env {
 	pde_t *env_pgdir;		// Kernel virtual address of page dir
 
 	// Exception handling
-	void *env_pgfault_upcall;	// Page fault upcall entry point
+	// Challenge!
+    void *env_exception_upcall; // Exception upcall entry point
+    void *env_exception_handlers[NEXCEPTIONS]; // User-defined exception handlers
 
 	// Lab 4 IPC
 	bool env_ipc_recving;		// Env is blocked receiving
