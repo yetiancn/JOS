@@ -33,7 +33,7 @@ extern const volatile struct PageInfo pages[];
 void	exit(void);
 
 // pgfault.c
-void	set_pgfault_handler(void (*handler)(struct UTrapframe *utf));
+// void	set_pgfault_handler(void (*handler)(struct UTrapframe *utf));
 
 // readline.c
 char*	readline(const char *buf);
@@ -46,6 +46,8 @@ int	sys_env_destroy(envid_t);
 void	sys_yield(void);
 static envid_t sys_exofork(void);
 int	sys_env_set_status(envid_t env, int status);
+
+//int	sys_env_set_pgfault_upcall(envid_t env, void *func);
 
 // Challenge!
 int	sys_env_set_exception_upcall(envid_t env, void *func);
