@@ -124,6 +124,25 @@ sys_env_set_status(envid_t envid, int status)
     return 0; 
 }
 
+// Set the page fault upcall for 'envid' by modifying the corresponding struct
+// Env's 'env_pgfault_upcall' field.  When 'envid' causes a page fault, the
+// kernel will push a fault record onto the exception stack, then branch to
+// 'func'.
+//
+// Returns 0 on success, < 0 on error.  Errors are:
+//  -E_BAD_ENV if environment envid doesn't currently exist,
+//      or the caller doesn't have permission to change envid.
+static int
+sys_env_set_pgfault_upcall(envid_t envid, void *func)
+{
+    // LAB 4: Your code here.
+    struct Env *e = NULL;
+    int r = envid2env(envid, &e, 1);
+    if (r < 0) return r;
+    e->env_pgfault_upcall = func;
+    return 0;
+}
+
 
 // Challenge!
 // Set the exception upcall for 'envid' by modifying the corresponding struct
@@ -153,7 +172,7 @@ sys_env_set_exception_upcall(envid_t envid, void *func)
 //	-E_BAD_ENV if environment envid doesn't currently exist,
 //		or the caller doesn't have permission to change envid.
 static int
-sys_env_set_exception_handlers(envid_t envid, uint32_t trapno, void *func)
+sys_env_set_exception_handler(envid_t envid, uint32_t trapno, void *func)
 {
 	// LAB 4: Your code here.
     struct Env *e;
@@ -436,8 +455,8 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
     // Challenge!
     case SYS_env_set_exception_upcall:
         return sys_env_set_exception_upcall((envid_t)a1, (void *)a2);
-    case SYS_env_set_exception_handlers:
-        return sys_env_set_exception_handlers((envid_t)a1, a2, (void *)a3);
+    case SYS_env_set_exception_handler:
+        return sys_env_set_exception_handler((envid_t)a1, a2, (void *)a3);
 
 
     case SYS_yield:
