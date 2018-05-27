@@ -248,7 +248,11 @@ trap_dispatch(struct Trapframe *tf)
             utf->utf_eip = tf->tf_eip;
             utf->utf_eflags = tf->tf_eflags;
             utf->utf_esp = tf->tf_esp;
-            curenv->env_tf.tf_esp = (uint32_t)utf;
+            
+           // void *entry = (void *)utf - 4;
+           // *(void **)entry = curenv->env_exception_handlers[tf->tf_trapno];
+            
+            curenv->env_tf.tf_esp = (uint32_t)utf; //(uint32_t)entry;
             curenv->env_tf.tf_eip = (uint32_t)curenv->env_exception_upcall;
             env_run(curenv);
             return;

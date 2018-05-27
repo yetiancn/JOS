@@ -36,7 +36,7 @@ _pgfault_upcall:
 	pushl %esp			// function argument: pointer to UTF
 	movl _pgfault_handler, %eax
 	call *%eax
-	addl $4, %esp			// pop function argument
+	addl $8, %esp			// pop function argument
 	
 	// Now the C page fault handler has returned and you must return
 	// to the trap time state.
