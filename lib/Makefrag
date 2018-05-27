@@ -13,7 +13,9 @@ LIB_SRCFILES :=		lib/console.c \
 LIB_SRCFILES :=		$(LIB_SRCFILES) \
 			lib/exception.c \
 			lib/xptentry.S \
-			lib/fork.c \
+            lib/pgfault.c \
+            lib/pfentry.S \
+            lib/fork.c \
 			lib/ipc.c
 
 
