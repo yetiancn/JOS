@@ -59,7 +59,8 @@ struct Env {
 	pde_t *env_pgdir;		// Kernel virtual address of page dir
 
 	// Exception handling
-	// Challenge!
+    void *env_pgfault_upcall;
+    // Challenge!
     void *env_exception_upcall; // Exception upcall entry point
     void *env_exception_handlers[NEXCEPTIONS]; // User-defined exception handlers
 

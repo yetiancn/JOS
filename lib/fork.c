@@ -109,7 +109,7 @@ fork(void)
 	// LAB 4: Your code here.
     envid_t envid;
     int r;
-    extern void _exception_upcall(void);
+    extern void _pgfault_upcall(void);
 
     set_pgfault_handler(pgfault);
     envid = sys_exofork();
@@ -130,7 +130,7 @@ fork(void)
     r = sys_page_alloc(envid, (void *)(UXSTACKTOP - PGSIZE), PTE_W | PTE_U | PTE_P);
     if (r < 0)
         panic("fork: sys_page_alloc %e", r);
-    r = sys_env_set_exception_upcall(envid, _exception_upcall);
+    r = sys_env_set_pgfault_upcall(envid, _pgfault_upcall);
     if (r < 0)
         panic("fork: sys_env_set_pgfault_upcall %e", r);
     r = sys_env_set_status(envid, ENV_RUNNABLE);

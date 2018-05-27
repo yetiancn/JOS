@@ -136,9 +136,9 @@ static int
 sys_env_set_pgfault_upcall(envid_t envid, void *func)
 {
     // LAB 4: Your code here.
-    struct Env *e = NULL;
-    int r = envid2env(envid, &e, 1);
-    if (r < 0) return r;
+    struct Env *e;
+    if (envid2env(envid, &e, 1) < 0)
+        return -E_BAD_ENV;
     e->env_pgfault_upcall = func;
     return 0;
 }
@@ -451,13 +451,14 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
         return sys_exofork();
     case SYS_env_set_status:
         return sys_env_set_status((envid_t)a1, (int)a2);
+    case SYS_env_set_pgfault_upcall:
+        return sys_env_set_pgfault_upcall((envid_t)a1, (void *)a2);
 
     // Challenge!
     case SYS_env_set_exception_upcall:
         return sys_env_set_exception_upcall((envid_t)a1, (void *)a2);
     case SYS_env_set_exception_handler:
         return sys_env_set_exception_handler((envid_t)a1, a2, (void *)a3);
-
 
     case SYS_yield:
         sys_yield();
