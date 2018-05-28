@@ -72,6 +72,16 @@ duppage(envid_t envid, unsigned pn)
 
     pte = uvpt[pn];
     perm = pte & PTE_SYSCALL; // get perms
+
+    // LAB 5: Exercise 8
+    if (perm & PTE_SHARE) {
+        r = sys_page_map(0, va, envid, va, perm);
+        if (r < 0)
+            panic("duppage: %e\n", r);
+        return 0;
+    }
+    
+    
     if (perm & (PTE_W | PTE_COW)) {
         perm |= PTE_COW;
         perm &= ~PTE_W;
