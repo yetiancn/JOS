@@ -94,7 +94,7 @@ flush_block(void *addr)
         return;
     if (ide_write(blockno * BLKSECTS, addr, BLKSECTS) < 0)
         panic("flush_block, ide_write fails\n");
-    r = sys_page_map(0, addr, 0, addr, uvpt[PGNUM(addr)] & PTE_SYSCALL);
+    r = sys_page_map(0, addr, 0, addr, uvpt[PGNUM(addr)] & PTE_SYSCALL & ~PTE_D);
     if (r < 0)
         panic("flush_block, sys_page_map: %e", r);
 
