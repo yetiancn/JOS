@@ -9,7 +9,7 @@
 #include "fs.h"
 
 
-#define debug 0
+#define debug 0 
 
 // The file system server maintains three structures
 // for each open file.
@@ -109,6 +109,7 @@ serve_open(envid_t envid, struct Fsreq_open *req,
 	int r;
 	struct OpenFile *o;
 
+    
 	if (debug)
 		cprintf("serve_open %08x %s 0x%x\n", envid, req->req_path, req->req_omode);
 
@@ -137,7 +138,7 @@ serve_open(envid_t envid, struct Fsreq_open *req,
 try_open:
 		if ((r = file_open(path, &f)) < 0) {
 			if (debug)
-				cprintf("file_open failed: %e", r);
+				cprintf("file_open failed: %e\n", r);
 			return r;
 		}
 	}
@@ -294,6 +295,41 @@ serve_sync(envid_t envid, union Fsipc *req)
 	return 0;
 }
 
+
+// lab5 challenge!
+int
+serve_readelf(envid_t envid, union Fsipc *ipc)
+{
+    struct Fsreq_readelf *req = &ipc->readelf;
+    struct Fsret_read *ret = &ipc->readRet;
+
+    struct OpenFile *o;
+    int r;
+    
+    //panic("[!!]\n");
+    
+    if ((r = openfile_lookup(envid, req->req_fileid, &o)) < 0)
+        return r;
+   
+    //panic("[!!]\n");
+    
+    do {
+        r = file_read(o->o_file, ret->ret_buf, BLKSIZE, o->o_fd->fd_offset);
+        // panic("[!!] end a file_read\n");
+        if (r > 0)
+            o->o_fd->fd_offset += r;
+    } while (r > 0);
+
+    // panic("[!!]\n");
+
+    if (r < 0)
+        return r;
+    return (uint32_t)o->o_file;
+    
+}
+
+
+
 typedef int (*fshandler)(envid_t envid, union Fsipc *req);
 
 fshandler handlers[] = {
@@ -304,7 +340,10 @@ fshandler handlers[] = {
 	[FSREQ_FLUSH] =		(fshandler)serve_flush,
 	[FSREQ_WRITE] =		(fshandler)serve_write,
 	[FSREQ_SET_SIZE] =	(fshandler)serve_set_size,
-	[FSREQ_SYNC] =		serve_sync
+	[FSREQ_SYNC] =		serve_sync,
+    // lab5 challenge!
+    [FSREQ_READELF] =  serve_readelf
+
 };
 
 void
@@ -328,7 +367,8 @@ serve(void)
 			continue; // just leave it hanging...
 		}
 
-		pg = NULL;
+		
+        pg = NULL;
 		if (req == FSREQ_OPEN) {
 			r = serve_open(whom, (struct Fsreq_open*)fsreq, &pg, &perm);
 		} else if (req < ARRAY_SIZE(handlers) && handlers[req]) {

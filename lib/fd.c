@@ -219,6 +219,26 @@ read(int fdnum, void *buf, size_t n)
 	return (*dev->dev_read)(fd, buf, n);
 }
 
+// lab5 challenge!
+int
+readelf(int fdnum)
+{
+    int r;
+    struct Dev *dev;
+    struct Fd *fd;
+
+    if ((r = fd_lookup(fdnum, &fd)) < 0
+        || (r = dev_lookup(fd->fd_dev_id, &dev)) < 0)
+        return r;
+    if ((fd->fd_omode & O_ACCMODE) == O_WRONLY) {
+		cprintf("[%08x] read %d -- bad mode\n", thisenv->env_id, fdnum);
+		return -E_INVAL;
+    }
+    if (!dev->dev_read)
+		return -E_NOT_SUPP;
+	return (*dev->dev_readelf)(fd);
+}
+
 ssize_t
 readn(int fdnum, void *buf, size_t n)
 {

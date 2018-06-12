@@ -14,6 +14,14 @@
 #include <kern/console.h>
 #include <kern/sched.h>
 
+#include <inc/fs.h>
+#include <inc/elf.h>
+
+#define debug 0
+
+ //void*   diskaddr(uint32_t blockno);
+ //void region_alloc(struct Env *, void *, size_t);
+
 // Print a string to the system console.
 // The string is exactly 'len' characters long.
 // Destroys the environment on memory errors.
@@ -398,6 +406,210 @@ sys_ipc_recv(void *dstva)
     sched_yield();
 }
 
+// lab5 challenge!
+static void
+region_alloc(struct Env *e, void *va, size_t len)
+{
+    int ret;
+    struct PageInfo *pp;
+    void *eva = (void *)ROUNDUP(va + len, PGSIZE);
+    va = (void *)ROUNDDOWN(va, PGSIZE);
+    for (; va < eva; va += PGSIZE) {
+        pp = page_alloc(0);
+        if (!pp)
+            panic("region_alloc: page_alloc failed!\n");                       
+        ret = page_insert(e->env_pgdir, pp, va, PTE_W | PTE_U);
+        if (ret)
+            panic("region_alloc: %e\n", ret);
+    }
+}
+
+void*
+diskaddr(uint32_t blockno)
+{
+    const uint32_t DISKMAP = 0x10000000;
+    return (char*) (DISKMAP + blockno * BLKSIZE);
+}
+
+
+uint32_t
+getblockno(struct File *f, uint32_t offset)
+{
+    int filebno = offset/BLKSIZE; // i-th block
+    // cprintf("[getblockno] filebno: %u\n", filebno);
+    if (filebno < NDIRECT)
+        return (f->f_direct)[filebno];
+    uint32_t *indirect = (uint32_t *)diskaddr(f->f_indirect);
+    return indirect[filebno - NDIRECT];
+}
+
+void *
+offset2addr(struct File *f, uint32_t offset)
+{
+    int blockno = getblockno(f, offset);
+    // cprintf("[offset2addr] blockno: %u\n", blockno);
+    void *bsva = (void *)diskaddr(blockno); // bsva: block starting va
+    uint32_t bsoffset = ROUNDDOWN(offset, BLKSIZE); // bsoffset: block starting offset
+    return bsva + offset - bsoffset; 
+}
+
+static int
+init_stack(const char **argv, uintptr_t *init_esp)
+{
+    size_t string_size;
+    int argc, i, r;
+    char *string_store;
+    uintptr_t *argv_store;
+    
+    page_remove(curenv->env_pgdir, (void *)(USTACKTOP - 2*PGSIZE));
+    region_alloc(curenv, (void *)(USTACKTOP - 2*PGSIZE), PGSIZE);
+    memset((void *)(USTACKTOP - 2*PGSIZE), 0, PGSIZE);
+
+    string_size = 0;
+    for (argc = 0; argv[argc] != 0; argc++)
+        string_size += strlen(argv[argc]) + 1;
+
+    string_store = (char *) USTACKTOP - PGSIZE - string_size;
+    // cprintf("[init_stack] argc: %u\n", argc);
+    for (i = 0; i < argc; i++) {
+        // argv_store[i] = (uintptr_t)string_store;
+        strcpy(string_store, argv[i]);
+        string_store += strlen(argv[i]) + 1;
+    }
+    assert(string_store == (char *) USTACKTOP - PGSIZE);
+
+
+
+    page_remove(curenv->env_pgdir, (void *)(USTACKTOP - PGSIZE));
+    region_alloc(curenv, (void *)(USTACKTOP - PGSIZE), PGSIZE);
+    memset((void *)(USTACKTOP - PGSIZE), 0, PGSIZE);
+
+    string_store = (char *) USTACKTOP - PGSIZE - string_size;
+    argv_store = (uintptr_t *) USTACKTOP - 4 * (argc + 1);
+    for (i = 0; i < argc; i++) {
+        argv_store[i] = (uintptr_t)string_store;
+        // strcpy(string_store, argv[i]);
+        string_store += strlen(string_store) + 1;
+    }
+
+    argv_store[argc] = 0;
+    assert(string_store == (char *) USTACKTOP - PGSIZE);
+    
+    argv_store[-1] = (uintptr_t)argv_store;
+    argv_store[-2] = (uintptr_t)argc;
+
+    *init_esp = (uintptr_t)(argv_store - 2);
+    return 0;
+}
+
+
+
+// argv[0] == filename
+static int
+sys_exec(uint32_t fileaddr, char **argv)
+{
+    struct File *f;
+    int i, fs_env_index;
+    char temp[BLKSIZE];
+    struct Elf *elf;
+    uint32_t va, ph_offset, eph_offset;
+    uint32_t st_offset, ed_offset, nextblk_offset, finished;
+    uint32_t phpva, phpfilesz, phpmemsz;
+    uint32_t fileaddr_k;
+    struct Proghdr *ph;
+
+    fileaddr_k = fileaddr;
+
+    int argc;
+    for (argc = 0; argv[argc] != 0; argc++);
+    
+    uintptr_t init_esp;
+    int r;
+   
+    if ((r = init_stack((const char **)argv, &init_esp)) < 0)
+        panic("sys_exec: init_stack error\n");
+
+    curenv->env_tf.tf_esp = init_esp;
+
+
+    // clear mapping
+    for (va = 0; va < UTOP; va += PGSIZE)
+        if (va != USTACKTOP - 2 * PGSIZE && va != USTACKTOP - PGSIZE)
+            page_remove(curenv->env_pgdir, (void *)va);
+
+    for (i = 0; i < NENV; i++)
+        if (envs[i].env_type == ENV_TYPE_FS)
+            break;
+    assert(i < NENV);
+
+    fs_env_index = i;
+    lcr3(PADDR(envs[fs_env_index].env_pgdir));
+    
+    f = (struct File *)fileaddr_k;
+   
+    // *elf* should point to the first address of the first block
+    elf = (struct Elf *)diskaddr(getblockno(f, 0));
+    if (elf->e_magic != ELF_MAGIC)
+        panic("sys_exec: not a valid ELF!\n");
+
+    curenv->env_tf.tf_eip = elf->e_entry;
+
+    // ph_offset: offset of *ph* in ELF
+    ph_offset = elf->e_phoff;
+    eph_offset = elf->e_phoff + elf->e_phnum * sizeof(struct Proghdr);
+
+    for (; ph_offset < eph_offset; ph_offset += sizeof(struct Proghdr)) {
+        ph = (struct Proghdr *)offset2addr(f, ph_offset);
+
+        if (ph->p_type != ELF_PROG_LOAD)
+            continue;
+        if (ph->p_filesz > ph->p_memsz)
+            panic("sys_exec: p_filesz > p_memsz!\n");
+        region_alloc(curenv, (void *)ph->p_va, ph->p_memsz);
+        
+        st_offset = ph->p_offset;
+        ed_offset = ph->p_offset + ph->p_filesz;
+        
+        nextblk_offset = ROUNDUP(st_offset, BLKSIZE);
+        finished = 0;
+        for (; st_offset < ed_offset; ) {
+            // move (nextblk_offset - st_offset) bytes 
+            // from st
+            // to   (ph->p_va + finished)
+            memset((void *)temp, 0, sizeof(temp));
+            memcpy((void *)temp, offset2addr(f, st_offset), 
+                        nextblk_offset - st_offset);
+            void *dst = (void *)ph->p_va + finished;
+            lcr3(PADDR(curenv->env_pgdir));
+            memmove(dst, temp, nextblk_offset - st_offset);
+            lcr3(PADDR(envs[fs_env_index].env_pgdir));
+           
+            finished += nextblk_offset - st_offset;
+            st_offset = nextblk_offset;
+            nextblk_offset += BLKSIZE;
+        }
+        
+        phpva = ph->p_va;
+        phpfilesz = ph->p_filesz;
+        phpmemsz = ph->p_memsz;
+        lcr3(PADDR(curenv->env_pgdir));
+        memset((void *)(phpva + phpfilesz), 0, phpmemsz - phpfilesz);
+         
+        lcr3(PADDR(envs[fs_env_index].env_pgdir));
+    }
+
+    lcr3(PADDR(curenv->env_pgdir));
+    // region_alloc(curenv, (void *)(USTACKTOP - PGSIZE), PGSIZE);
+    // *(uint32_t *)(USTACKTOP - 4) = (uint32_t)argc;
+    // *(uint32_t *)(USTACKTOP - 8) = (uint32_t)argv;
+    // curenv->env_tf.tf_esp = USTACKTOP - 8;
+    
+    
+
+    return 0;
+}
+
+
 // Dispatches to the correct kernel function, passing the arguments.
 int32_t
 syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, uint32_t a5)
@@ -438,6 +650,8 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
         return sys_ipc_try_send((envid_t)a1, a2, (void *)a3, (unsigned)a4);
     case SYS_ipc_recv:
         return sys_ipc_recv((void *)a1);
+    case SYS_exec:
+        return sys_exec((uint32_t)a1, (char **)a2);
     default:
 		return -E_INVAL;
 	}

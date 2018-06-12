@@ -17,7 +17,9 @@ enum {
 	SYS_yield,
 	SYS_ipc_try_send,
 	SYS_ipc_recv,
-	NSYSCALLS
+    // lab5 challenge!
+    SYS_exec,
+    NSYSCALLS
 };
 
 #endif /* !JOS_INC_SYSCALL_H */

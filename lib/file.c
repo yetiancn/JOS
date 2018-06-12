@@ -15,7 +15,7 @@ union Fsipc fsipcbuf __attribute__((aligned(PGSIZE)));
 static int
 fsipc(unsigned type, void *dstva)
 {
-	static envid_t fsenv;
+    static envid_t fsenv;
 	if (fsenv == 0)
 		fsenv = ipc_find_env(ENV_TYPE_FS);
 
@@ -25,7 +25,8 @@ fsipc(unsigned type, void *dstva)
 		cprintf("[%08x] fsipc %d %08x\n", thisenv->env_id, type, *(uint32_t *)&fsipcbuf);
 
 	ipc_send(fsenv, type, &fsipcbuf, PTE_P | PTE_W | PTE_U);
-	return ipc_recv(NULL, dstva, NULL);
+
+    return ipc_recv(NULL, dstva, NULL);
 }
 
 static int devfile_flush(struct Fd *fd);
@@ -33,6 +34,7 @@ static ssize_t devfile_read(struct Fd *fd, void *buf, size_t n);
 static ssize_t devfile_write(struct Fd *fd, const void *buf, size_t n);
 static int devfile_stat(struct Fd *fd, struct Stat *stat);
 static int devfile_trunc(struct Fd *fd, off_t newsize);
+static int devfile_readelf(struct Fd *fd);
 
 struct Dev devfile =
 {
@@ -42,7 +44,9 @@ struct Dev devfile =
 	.dev_close =	devfile_flush,
 	.dev_stat =	devfile_stat,
 	.dev_write =	devfile_write,
-	.dev_trunc =	devfile_trunc
+	.dev_trunc =	devfile_trunc,
+    // lab5 challenge!
+    .dev_readelf =  devfile_readelf
 };
 
 // Open a file (or directory).
@@ -190,3 +194,9 @@ sync(void)
 	return fsipc(FSREQ_SYNC, NULL);
 }
 
+// lab5 challenge!
+int devfile_readelf(struct Fd *fd)
+{
+    fsipcbuf.readelf.req_fileid = fd->fd_file.id;
+    return fsipc(FSREQ_READELF, NULL);
+}

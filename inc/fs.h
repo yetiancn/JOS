@@ -70,7 +70,9 @@ enum {
 	FSREQ_STAT,
 	FSREQ_FLUSH,
 	FSREQ_REMOVE,
-	FSREQ_SYNC
+	FSREQ_SYNC,
+    // lab5 challenge!
+    FSREQ_READELF
 };
 
 union Fsipc {
@@ -108,6 +110,11 @@ union Fsipc {
 	struct Fsreq_remove {
 		char req_path[MAXPATHLEN];
 	} remove;
+    // lab5 challenge!
+    struct Fsreq_readelf {
+        int req_fileid;
+    } readelf;
+
 
 	// Ensure Fsipc is one page
 	char _pad[PGSIZE];
