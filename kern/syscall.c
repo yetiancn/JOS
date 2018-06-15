@@ -530,12 +530,20 @@ sys_exec(uint32_t fileaddr, char **argv)
         panic("sys_exec: init_stack error\n");
 
     curenv->env_tf.tf_esp = init_esp;
-
+    curenv->env_tf.tf_cs = GD_UT | 3;
+    curenv->env_tf.tf_eflags |= FL_IF;
+    curenv->env_tf.tf_eflags &= ~FL_IOPL_MASK;
 
     // clear mapping
-    for (va = 0; va < UTOP; va += PGSIZE)
-        if (va != USTACKTOP - 2 * PGSIZE && va != USTACKTOP - PGSIZE)
-            page_remove(curenv->env_pgdir, (void *)va);
+    for (va = 0; va < UTOP; va += PGSIZE) {
+        if (va == USTACKTOP - 2 * PGSIZE || va == USTACKTOP - PGSIZE)
+            continue;
+        pte_t *ppte;
+        ppte = pgdir_walk(curenv->env_pgdir, (const void *)va, 0);
+        if (ppte == NULL || (*ppte) & 0x400)
+            continue;
+        page_remove(curenv->env_pgdir, (void *)va);
+    }
 
     for (i = 0; i < NENV; i++)
         if (envs[i].env_type == ENV_TYPE_FS)

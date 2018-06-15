@@ -8,9 +8,9 @@ umain(int argc, char **argv)
 
 	binaryname = "icode";
 
-	cprintf("icode: exec /echo\n");
+	cprintf("icode: exec /init\n");
 	if ((r = execl("/echo", "init", "initarg1", "initarg2", (char*)0)) < 0)
-		panic("icode: exec /echo: %e", r);
+		panic("icode: exec /init: %e", r);
 
 	cprintf("icode: exiting\n");
 }
